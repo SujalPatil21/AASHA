@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import extractStructuredData from '../utils/structuredProcessor';
 import calculateRisk from '../utils/riskEngine';
-import { saveRecord } from "../indexeddb/db";
+import { patientRepository } from "../repository/patientRepository";
 import { syncPendingRecords } from "../sync/syncEngine";
 import { verifyConnectivity } from "../utils/connectivity";
 import micIcon from "../assets/mic.png";
@@ -57,18 +57,87 @@ function AshaPage() {
   const [isListening, setIsListening] = useState(false);
   const [micError, setMicError] = useState("");
   const [micMode, setMicMode] = useState("");
+  
+  // Offline CRUD & Draft states
+  const [records, setRecords] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [editingId, setEditingId] = useState(null);
+  
+  // Sync states
+  const [syncState, setSyncState] = useState('idle'); // 'idle' | 'syncing' | 'success' | 'failed'
+  const [lastSyncTime, setLastSyncTime] = useState(null);
+
   const recognitionRef = useRef(null);
+
+  const refreshRecords = useCallback(async () => {
+    const data = await patientRepository.searchPatients(searchQuery);
+    setRecords(data);
+  }, [searchQuery]);
 
   const checkConnectivityAndSync = useCallback(async () => {
     const reachable = await verifyConnectivity();
     setIsOnline(reachable);
 
     if (reachable) {
-      syncPendingRecords();
+      setSyncState('syncing');
+      try {
+        await syncPendingRecords();
+        setSyncState('success');
+        setLastSyncTime(new Date().toLocaleTimeString());
+      } catch (err) {
+        setSyncState('failed');
+      }
+    } else {
+      setSyncState('idle');
     }
+    refreshRecords();
+  }, [refreshRecords]);
+
+
+  // Load draft and local records on mount
+  useEffect(() => {
+    const initPage = async () => {
+      // Restore form draft if available
+      const draft = await patientRepository.getFormDraft();
+      if (draft) {
+        setPatientName(draft.patientName || '');
+        setAge(draft.age || '');
+        setPhone(draft.phone || '');
+        setPatientType(draft.patientType || 'adult');
+        setVisitType(draft.visitType || 'routine');
+        setRawText(draft.rawText || '');
+        setLanguage(draft.language || 'auto');
+      }
+      refreshRecords();
+    };
+    initPage();
   }, []);
 
-  // AUTO SYNC ON CONNECTIVITY RESTORE
+  // Save form draft on changes (only if not actively editing an existing record)
+  useEffect(() => {
+    if (editingId) return;
+
+    const saveCurrentDraft = async () => {
+      await patientRepository.saveFormDraft({
+        patientName,
+        age,
+        phone,
+        patientType,
+        visitType,
+        rawText,
+        language
+      });
+    };
+
+    saveCurrentDraft();
+  }, [patientName, age, phone, patientType, visitType, rawText, language, editingId]);
+
+  // Refresh records list when search query changes
+  useEffect(() => {
+    refreshRecords();
+  }, [searchQuery, refreshRecords]);
+
+  // Auto sync polling & event listeners
   useEffect(() => {
     checkConnectivityAndSync();
 
@@ -229,23 +298,69 @@ function AshaPage() {
     setRisk(riskResult);
 
     const now = Date.now();
-    const record = {
-      id: now.toString(),
+    const patientData = {
+      id: editingId || now.toString(),
       patientName: patientName.trim(),
       age: Number(age),
       phone: phone.trim() || null,
       patientType,
+      visitType,
       rawText,
       language: effectiveLanguage,
-      structured: { ...result, visitType },
-      createdAt: now,
-      syncStatus: "pending",
-      riskLevel: riskResult,
+      syncStatus: "pending"
     };
 
-    await saveRecord(record);
+    // If editing, preserve the original createdAt timestamp if we can find it
+    if (editingId) {
+      const original = records.find(r => r.id === editingId);
+      if (original) {
+        patientData.createdAt = original.createdAt;
+      }
+    }
+
+    await patientRepository.savePatient(patientData);
     setLastSavedAt(now);
-    console.log("Record saved offline");
+    
+    // Clear draft and reset state variables
+    await patientRepository.clearFormDraft();
+    setEditingId(null);
+    setPatientName('');
+    setAge('');
+    setPhone('');
+    setRawText('');
+    setExtracted(null);
+    setRisk(null);
+    
+    refreshRecords();
+  };
+
+  const handleSaveAndSync = async () => {
+    await handleProcessInput();
+    await checkConnectivityAndSync();
+  };
+
+  const handleEditRecord = (record) => {
+    setEditingId(record.id);
+    setPatientName(record.patientName || '');
+    setAge(record.age || '');
+    setPhone(record.phone || '');
+    setPatientType(record.patientType || 'adult');
+    setVisitType(record.structured?.visitType || record.visitType || 'routine');
+    setRawText(record.rawText || '');
+    setLanguage(record.language || 'auto');
+    setExtracted(record.structured || null);
+    setRisk(record.riskLevel || null);
+  };
+
+  const handleCancelEdit = async () => {
+    setEditingId(null);
+    setPatientName('');
+    setAge('');
+    setPhone('');
+    setRawText('');
+    setExtracted(null);
+    setRisk(null);
+    await patientRepository.clearFormDraft();
   };
 
   const cardStyle = {
@@ -259,6 +374,8 @@ function AshaPage() {
   const inputStyle = { width: '100%', border: '1px solid #c9d8cf', borderRadius: 8, padding: '10px 12px', color: '#111827', background: '#fff' };
   const primaryButton = { borderRadius: 10, border: '1px solid #0f8f5a', padding: '10px 16px', background: '#0f8f5a', color: '#fff', fontWeight: 600, cursor: 'pointer' };
   const secondaryButton = { borderRadius: 10, border: '1px solid #9ecbb3', padding: '10px 16px', background: '#ecfdf3', color: '#0f5132', fontWeight: 600, cursor: 'pointer' };
+  const cancelEditButton = { borderRadius: 10, border: '1px solid #d1d5db', padding: '10px 16px', background: '#f3f4f6', color: '#374151', fontWeight: 600, cursor: 'pointer' };
+  
   const riskLabel = risk || 'No risk';
   const riskTone = riskLabel.toLowerCase().includes('critical')
     ? { bg: '#fef2f2', border: '#ef4444', text: '#991b1b', dot: '#dc2626' }
@@ -268,9 +385,33 @@ function AshaPage() {
         ? { bg: '#fffbeb', border: '#f59e0b', text: '#92400e', dot: '#d97706' }
         : { bg: '#ecfdf3', border: '#16a34a', text: '#065f46', dot: '#16a34a' };
 
+  const pendingCount = records.filter(r => r.syncStatus === 'pending' || r.syncStatus === 'pending-delete').length;
+
   return (
     <div style={{ maxWidth: 1100, margin: '24px auto', padding: 16 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+      {/* Dynamic Offline Warning Banner */}
+      {!isOnline && (
+        <div style={{
+          background: '#fffbeb',
+          border: '1px solid #fef3c7',
+          borderLeft: '6px solid #d97706',
+          color: '#92400e',
+          padding: '12px 16px',
+          borderRadius: 8,
+          marginBottom: 16,
+          fontWeight: 600,
+          fontSize: 14,
+          boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10
+        }}>
+          <span>⚠️</span>
+          <span><strong>Working Offline:</strong> Patient records will be saved locally on this device and synced automatically to the server when connection is restored.</span>
+        </div>
+      )}
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16, flexWrap: 'wrap', gap: 16 }}>
         <div>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.72)', border: '1px solid rgba(151, 188, 167, 0.45)', borderRadius: 24, padding: '6px 12px', marginBottom: 8 }}>
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#0f8f5a' }} />
@@ -279,14 +420,64 @@ function AshaPage() {
           <h1 style={{ margin: 0, fontSize: 38, lineHeight: 1.08, color: '#111827' }}>AASHA Health Console</h1>
           <small style={{ color: '#475467', fontSize: 14 }}>AI-Powered Assistant for Community Health Visits</small>
         </div>
-        <span style={{ background: isOnline ? '#ecfdf3' : '#fef3f2', color: isOnline ? '#027a48' : '#b42318', borderRadius: 16, padding: '6px 12px', fontWeight: 600 }}>
-          {isOnline ? 'Online' : 'Offline'}
-        </span>
+        
+        {/* Sync Status Console Card */}
+        <div style={{ 
+          background: 'linear-gradient(135deg, rgba(255,255,255,0.9), rgba(244,252,247,0.8))', 
+          border: '1px solid rgba(151, 188, 167, 0.45)', 
+          borderRadius: 12, 
+          padding: '10px 16px',
+          boxShadow: '0 4px 12px rgba(16, 24, 40, 0.05)',
+          fontSize: 13,
+          minWidth: 240
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+            <strong>Network Status:</strong>
+            <span style={{ 
+              background: isOnline ? '#ecfdf3' : '#fef3f2', 
+              color: isOnline ? '#027a48' : '#b42318', 
+              borderRadius: 16, 
+              padding: '2px 8px', 
+              fontWeight: 700,
+              fontSize: 11
+            }}>
+              {isOnline ? '🟢 Connected' : '🔴 Disconnected'}
+            </span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+            <span>Unsynced Queue:</span>
+            <span style={{ 
+              fontWeight: 700, 
+              color: pendingCount > 0 ? '#b42318' : '#027a48',
+              background: pendingCount > 0 ? '#fef3f2' : '#ecfdf3',
+              padding: '1px 6px',
+              borderRadius: 6,
+              fontSize: 11
+            }}>
+              {pendingCount} records
+            </span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+            <span>Sync Status:</span>
+            <span style={{ fontWeight: 600, color: '#475467' }}>
+              {syncState === 'syncing' ? '⏳ Syncing...' :
+               syncState === 'success' ? '✅ Synced' :
+               syncState === 'failed' ? '❌ Sync Failed' : '💤 Standby'}
+            </span>
+          </div>
+          {lastSyncTime && (
+            <div style={{ fontSize: 11, color: '#667085', textAlign: 'right', marginTop: 4 }}>
+              Last sync: {lastSyncTime}
+            </div>
+          )}
+        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16 }}>
         <div style={cardStyle}>
-          <h2 style={{ marginTop: 0 }}>Add New Patient - Health Record</h2>
+          <h2 style={{ marginTop: 0 }}>
+            {editingId ? "Edit Patient Health Record" : "Add New Patient - Health Record"}
+          </h2>
 
           <h3 style={{ marginBottom: 10 }}>Basic Details</h3>
           <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 0.6fr 1fr', gap: 10, marginBottom: 10 }}>
@@ -365,48 +556,145 @@ function AshaPage() {
           <div style={{ textAlign: 'right', color: '#667085', fontSize: 12 }}>{rawText.length} / 500</div>
 
           <div style={{ marginTop: 14 }}>
-            <button style={secondaryButton} onClick={handleProcessInput}>Save Offline</button>{' '}
-            <button style={primaryButton} onClick={syncPendingRecords}>Save & Sync</button>
+            {editingId ? (
+              <>
+                <button style={primaryButton} onClick={handleProcessInput}>Save Offline Update</button>{' '}
+                <button style={secondaryButton} onClick={handleSaveAndSync}>Save & Sync Update</button>{' '}
+                <button style={cancelEditButton} onClick={handleCancelEdit}>Cancel Edit</button>
+              </>
+            ) : (
+              <>
+                <button style={secondaryButton} onClick={handleProcessInput}>Save Offline</button>{' '}
+                <button style={primaryButton} onClick={handleSaveAndSync}>Save & Sync</button>
+              </>
+            )}
           </div>
         </div>
 
-        <div style={cardStyle}>
-          <h3 style={{ marginTop: 0 }}>Risk Summary</h3>
-          <div
-            style={{
-              background: riskTone.bg,
-              border: `1px solid ${riskTone.border}`,
-              borderLeft: `6px solid ${riskTone.dot}`,
-              borderRadius: 12,
-              padding: 12,
-              fontWeight: 700,
-              color: riskTone.text,
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-            }}
-          >
-            <span>{risk ? `${risk} Risk` : 'No risk calculated yet'}</span>
-            <span style={{ width: 10, height: 10, borderRadius: '50%', background: riskTone.dot }} />
-          </div>
-          <p style={{ color: '#667085', marginTop: 12 }}>
-            Last saved offline: {lastSavedAt ? new Date(lastSavedAt).toLocaleTimeString() : 'Not yet'}
-          </p>
-
-          <h4>Structured Preview</h4>
-          {extracted ? (
-            <div style={{ fontSize: 14, lineHeight: 1.6 }}>
-              <div><strong>Pregnancy Month:</strong> {extracted.pregnancyMonth ?? 'N/A'}</div>
-              <div><strong>Fever Days:</strong> {extracted.feverDays ?? 'N/A'}</div>
-              <div><strong>High BP:</strong> {extracted.highBP ? 'Yes' : 'No'}</div>
-              <div><strong>Swelling:</strong> {extracted.swelling ? 'Yes' : 'No'}</div>
-              <div><strong>Bleeding:</strong> {extracted.bleeding ? 'Yes' : 'No'}</div>
-              <div><strong>Breathing Issue:</strong> {extracted.breathingIssue ? 'Yes' : 'No'}</div>
-              <div><strong>Symptoms:</strong> {(extracted.symptoms || []).join(', ') || 'None'}</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={cardStyle}>
+            <h3 style={{ marginTop: 0 }}>Risk Summary</h3>
+            <div
+              style={{
+                background: riskTone.bg,
+                border: `1px solid ${riskTone.border}`,
+                borderLeft: `6px solid ${riskTone.dot}`,
+                borderRadius: 12,
+                padding: 12,
+                fontWeight: 700,
+                color: riskTone.text,
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <span>{risk ? `${risk} Risk` : 'No risk calculated yet'}</span>
+              <span style={{ width: 10, height: 10, borderRadius: '50%', background: riskTone.dot }} />
             </div>
-          ) : (
-            <p style={{ color: '#667085' }}>No structured data yet.</p>
-          )}
+            <p style={{ color: '#667085', marginTop: 12 }}>
+              Last saved offline: {lastSavedAt ? new Date(lastSavedAt).toLocaleTimeString() : 'Not yet'}
+            </p>
+
+            <h4>Structured Preview</h4>
+            {extracted ? (
+              <div style={{ fontSize: 14, lineHeight: 1.6 }}>
+                <div><strong>Pregnancy Month:</strong> {extracted.pregnancyMonth ?? 'N/A'}</div>
+                <div><strong>Fever Days:</strong> {extracted.feverDays ?? 'N/A'}</div>
+                <div><strong>High BP:</strong> {extracted.highBP ? 'Yes' : 'No'}</div>
+                <div><strong>Swelling:</strong> {extracted.swelling ? 'Yes' : 'No'}</div>
+                <div><strong>Bleeding:</strong> {extracted.bleeding ? 'Yes' : 'No'}</div>
+                <div><strong>Breathing Issue:</strong> {extracted.breathingIssue ? 'Yes' : 'No'}</div>
+                <div><strong>Symptoms:</strong> {(extracted.symptoms || []).join(', ') || 'None'}</div>
+              </div>
+            ) : (
+              <p style={{ color: '#667085' }}>No structured data yet.</p>
+            )}
+          </div>
+
+          <div style={cardStyle}>
+            <h3 style={{ marginTop: 0 }}>Patient Records (Local Cache)</h3>
+            <input
+              style={{ ...inputStyle, marginBottom: 12, padding: '6px 10px' }}
+              placeholder="Search patients offline..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            <div style={{ maxHeight: 350, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {records.length === 0 ? (
+                <p style={{ color: '#667085', fontSize: 14 }}>No records found offline.</p>
+              ) : (
+                records.map((rec) => (
+                  <div 
+                    key={rec.id} 
+                    style={{ 
+                      background: 'rgba(255,255,255,0.7)', 
+                      border: '1px solid rgba(151, 188, 167, 0.3)', 
+                      borderRadius: 10, 
+                      padding: 10, 
+                      fontSize: 13 
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, alignItems: 'center' }}>
+                      <span>{rec.patientName} ({rec.age}y)</span>
+                      <span 
+                        style={{ 
+                          fontSize: 11, 
+                          padding: '2px 6px', 
+                          borderRadius: 10, 
+                          fontWeight: 600,
+                          background: rec.syncStatus === 'synced' ? '#dcfce7' : '#fef9c3', 
+                          color: rec.syncStatus === 'synced' ? '#14532d' : '#713f12' 
+                        }}
+                      >
+                        {rec.syncStatus === 'synced' ? 'Synced' : 'Pending'}
+                      </span>
+                    </div>
+                    <div style={{ color: '#475467', marginTop: 4 }}>
+                      <strong>Risk:</strong> {rec.riskLevel} | <strong>Type:</strong> {rec.patientType}
+                    </div>
+                    <div style={{ color: '#667085', fontSize: 11, marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {rec.rawText}
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                      <button 
+                        onClick={() => handleEditRecord(rec)}
+                        style={{ 
+                          background: '#eff6ff', 
+                          border: '1px solid #bfdbfe', 
+                          color: '#1e40af', 
+                          borderRadius: 6, 
+                          padding: '2px 8px', 
+                          cursor: 'pointer',
+                          fontSize: 11
+                        }}
+                      >
+                        Edit
+                      </button>
+                      <button 
+                        onClick={async () => {
+                          if (confirm(`Delete record for ${rec.patientName}?`)) {
+                            await patientRepository.deletePatient(rec.id);
+                            refreshRecords();
+                          }
+                        }}
+                        style={{ 
+                          background: '#fef2f2', 
+                          border: '1px solid #fecaca', 
+                          color: '#991b1b', 
+                          borderRadius: 6, 
+                          padding: '2px 8px', 
+                          cursor: 'pointer',
+                          fontSize: 11
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>

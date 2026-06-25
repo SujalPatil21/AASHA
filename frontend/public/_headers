@@ -1,0 +1,11 @@
+# Prevent service worker caching
+/sw.js
+  Cache-Control: public, max-age=0, must-revalidate
+
+# Cache webmanifest short-term
+/manifest.webmanifest
+  Cache-Control: public, max-age=0, must-revalidate
+
+# Cache hashed assets permanently
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

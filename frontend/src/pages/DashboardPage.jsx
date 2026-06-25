@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-
-const API_BASE = import.meta.env.VITE_BACKEND_API_URL || 'http://localhost:8080';
+import { patientRepository } from '../repository/patientRepository';
+import { verifyConnectivity } from '../utils/connectivity';
 
 const DashboardPage = () => {
   const [records, setRecords] = useState([]);
@@ -8,19 +8,27 @@ const DashboardPage = () => {
   const [riskFilter, setRiskFilter] = useState('All');
 
   useEffect(() => {
-    const fetchRecords = async () => {
+    const loadRecords = async () => {
       try {
-        const response = await fetch(`${API_BASE}/api/records`);
-        const data = await response.json();
-        setRecords(data.records || []);
+        // Load offline cache instantly
+        const localRecords = await patientRepository.getAllPatients();
+        setRecords(localRecords);
+        setLoading(false);
+
+        // Fetch from backend in background if online and refresh
+        const isOnline = await verifyConnectivity();
+        if (isOnline) {
+          await patientRepository.syncFromServer();
+          const updatedRecords = await patientRepository.getAllPatients();
+          setRecords(updatedRecords);
+        }
       } catch (error) {
-        console.error('Error fetching records:', error);
-      } finally {
+        console.error('Error loading dashboard records:', error);
         setLoading(false);
       }
     };
 
-    fetchRecords();
+    loadRecords();
   }, []);
 
   const totalRecords = records.length;

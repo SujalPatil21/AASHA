@@ -83,10 +83,24 @@ public class HealthRecordController {
         return Map.of("status", "ok");
     }
 
+    @DeleteMapping("/records/{id}")
+    public Map<String, Object> deleteRecord(@PathVariable String id) {
+        boolean deleted = healthRecordService.delete(id);
+        return Map.of(
+                "id", id,
+                "deleted", deleted,
+                "message", deleted ? "Record deleted successfully" : "Record not found"
+        );
+    }
+
     private Map<String, Object> toApiRecord(HealthRecord record) {
         Long createdAt = record.getCreatedAt() == null
                 ? null
                 : record.getCreatedAt().toInstant(ZoneOffset.UTC).toEpochMilli();
+
+        Long updatedAt = record.getUpdatedAt() == null
+                ? null
+                : record.getUpdatedAt().toInstant(ZoneOffset.UTC).toEpochMilli();
 
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("id", record.getId());
@@ -99,6 +113,7 @@ public class HealthRecordController {
         response.put("structured", record.getStructured());
         response.put("riskLevel", record.getRiskLevel() == null ? "Low" : record.getRiskLevel());
         response.put("createdAt", createdAt);
+        response.put("updatedAt", updatedAt);
         response.put("sourceDevice", record.getSourceDevice());
         return response;
     }

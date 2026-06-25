@@ -13,6 +13,7 @@ public class HealthRecordUpsertRequest {
     private Map<String, Object> structured;
     private String riskLevel;
     private Long createdAt;
+    private Long updatedAt;
     private String sourceDevice;
 
     public String getId() {
@@ -93,6 +94,14 @@ public class HealthRecordUpsertRequest {
 
     public void setCreatedAt(Long createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public Long getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(Long updatedAt) {
+        this.updatedAt = updatedAt;
     }
 
     public String getSourceDevice() {

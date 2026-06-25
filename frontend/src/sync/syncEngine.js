@@ -1,7 +1,8 @@
-import { getAllRecords, markRecordSynced } from '../indexeddb/db';
+import { getAllRecords, markRecordSynced, deleteRecord } from '../indexeddb/db';
 import { verifyConnectivity } from '../utils/connectivity';
 
 const API_URL = import.meta.env.VITE_SYNC_API_URL || 'http://localhost:8080/records';
+const SYNC_URL = API_URL.replace(/\/records\/?$/, '') + '/sync';
 const inFlightRecordIds = new Set();
 
 function getSourceDevice() {
@@ -28,13 +29,13 @@ function buildPayload(record) {
     structured: record.structured,
     riskLevel: record.riskLevel || record.risk || null,
     createdAt: record.createdAt,
+    updatedAt: record.updatedAt || record.createdAt || Date.now(),
     sourceDevice: getSourceDevice(),
   };
 }
 
 /**
- * Sync pending records from IndexedDB to the backend API.
- * Keeps failed uploads pending and only marks records synced on confirmed success.
+ * Sync pending records (inserts, updates, and deletes) to the backend.
  */
 export async function syncPendingRecords() {
   const isReachable = await verifyConnectivity();
@@ -45,49 +46,78 @@ export async function syncPendingRecords() {
 
   try {
     const allRecords = await getAllRecords();
-    const pendingRecords = allRecords.filter((record) => record.syncStatus === 'pending');
+    
+    // 1. Process soft deletes offline
+    const pendingDeletions = allRecords.filter((record) => record.syncStatus === 'pending-delete');
+    if (pendingDeletions.length > 0) {
+      console.log(`Found ${pendingDeletions.length} pending deletions to sync`);
+      for (const record of pendingDeletions) {
+        if (inFlightRecordIds.has(record.id)) continue;
+        inFlightRecordIds.add(record.id);
 
-    if (pendingRecords.length === 0) {
-      console.log('No pending records to sync');
+        try {
+          const response = await fetch(`${API_URL}/${record.id}`, {
+            method: 'DELETE'
+          });
+
+          if (response.ok) {
+            await deleteRecord(record.id);
+            console.log(`Record ${record.id} deleted successfully from server and local cache`);
+          } else {
+            console.error(`Failed to delete record ${record.id} on server: ${response.status}`);
+          }
+        } catch (error) {
+          console.error(`Error deleting record ${record.id}:`, error);
+        } finally {
+          inFlightRecordIds.delete(record.id);
+        }
+      }
+    }
+
+    // 2. Process batch inserts and updates
+    const pendingUploads = allRecords.filter((record) => record.syncStatus === 'pending');
+    if (pendingUploads.length === 0) {
+      console.log('No pending updates or uploads to sync');
       return;
     }
 
-    console.log(`Found ${pendingRecords.length} pending records to sync`);
+    console.log(`Found ${pendingUploads.length} pending records to upload`);
+    const uploadBatch = [];
 
-    const seenInBatch = new Set();
-
-    for (const record of pendingRecords) {
-      if (seenInBatch.has(record.id) || inFlightRecordIds.has(record.id)) {
-        continue;
-      }
-
-      seenInBatch.add(record.id);
+    for (const record of pendingUploads) {
+      if (inFlightRecordIds.has(record.id)) continue;
+      uploadBatch.push(record);
       inFlightRecordIds.add(record.id);
+    }
 
-      try {
-        const response = await fetch(API_URL, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(buildPayload(record)),
-        });
+    if (uploadBatch.length === 0) return;
 
-        if (response.ok) {
+    try {
+      const response = await fetch(SYNC_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(uploadBatch.map(buildPayload)),
+      });
+
+      if (response.ok) {
+        for (const record of uploadBatch) {
           await markRecordSynced(record.id);
           console.log(`Record ${record.id} synced successfully`);
-        } else {
-          console.error(`Failed to sync record ${record.id}: ${response.status} ${response.statusText}`);
         }
-      } catch (error) {
-        console.error(`Error syncing record ${record.id}:`, error);
-      } finally {
+        console.log('Batch sync completed successfully');
+      } else {
+        console.error(`Batch sync failed: ${response.status} ${response.statusText}`);
+      }
+    } catch (error) {
+      console.error('Error during batch sync upload:', error);
+    } finally {
+      for (const record of uploadBatch) {
         inFlightRecordIds.delete(record.id);
       }
     }
-
-    console.log('Sync completed');
   } catch (error) {
-    console.error('Error during sync:', error);
+    console.error('Error during sync cycle:', error);
   }
 }

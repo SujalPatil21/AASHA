@@ -34,12 +34,23 @@ public class HealthRecordService {
             record.setId(UUID.randomUUID().toString());
         }
 
-        if (healthRecordRepository.existsById(record.getId())) {
-            return false;
+        var existingOpt = healthRecordRepository.findById(record.getId());
+        if (existingOpt.isPresent()) {
+            HealthRecord existing = existingOpt.get();
+            LocalDateTime existingUpdate = existing.getUpdatedAt() != null ? existing.getUpdatedAt() : existing.getCreatedAt();
+            LocalDateTime incomingUpdate = record.getUpdatedAt() != null ? record.getUpdatedAt() : record.getCreatedAt();
+
+            if (existingUpdate != null && incomingUpdate != null && !incomingUpdate.isAfter(existingUpdate)) {
+                // Ignore because server already has a newer or equal timestamp (LWW)
+                return false;
+            }
         }
 
         if (record.getCreatedAt() == null) {
             record.setCreatedAt(LocalDateTime.now(ZoneOffset.UTC));
+        }
+        if (record.getUpdatedAt() == null) {
+            record.setUpdatedAt(LocalDateTime.now(ZoneOffset.UTC));
         }
 
         String risk = riskAssessmentService.calculateRisk(
@@ -65,6 +76,7 @@ public class HealthRecordService {
         record.setStructured(request.getStructured());
         record.setSourceDevice(request.getSourceDevice());
         record.setCreatedAt(toDateTime(request.getCreatedAt()));
+        record.setUpdatedAt(toDateTime(request.getUpdatedAt()));
         return save(record);
     }
 
@@ -79,6 +91,14 @@ public class HealthRecordService {
                 List.of("High", "Critical"),
                 PageRequest.of(0, limit)
         );
+    }
+
+    public boolean delete(String id) {
+        if (healthRecordRepository.existsById(id)) {
+            healthRecordRepository.deleteById(id);
+            return true;
+        }
+        return false;
     }
 
     private LocalDateTime toDateTime(Long epochMillis) {
