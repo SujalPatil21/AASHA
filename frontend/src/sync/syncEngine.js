@@ -1,8 +1,9 @@
 import { getAllRecords, markRecordSynced, deleteRecord } from '../indexeddb/db';
 import { verifyConnectivity } from '../utils/connectivity';
 
-const API_URL = import.meta.env.VITE_SYNC_API_URL || 'http://localhost:8080/records';
-const SYNC_URL = API_URL.replace(/\/records\/?$/, '') + '/sync';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://aasha-production-1974.up.railway.app';
+const API_URL = `${API_BASE}/api/records`;
+const SYNC_URL = `${API_BASE}/api/sync`;
 const inFlightRecordIds = new Set();
 
 function getSourceDevice() {

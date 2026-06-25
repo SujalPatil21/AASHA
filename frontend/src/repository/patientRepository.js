@@ -14,7 +14,7 @@ import { calculateRisk } from '../utils/riskEngine';
 import { verifyConnectivity } from '../utils/connectivity';
 import { syncPendingRecords } from '../sync/syncEngine';
 
-const API_BASE = import.meta.env.VITE_BACKEND_API_URL || 'http://localhost:8080';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://aasha-production-1974.up.railway.app';
 
 export const patientRepository = {
   /**
