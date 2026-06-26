@@ -34,6 +34,7 @@ ALTER TABLE health_records DROP CONSTRAINT IF EXISTS health_records_patient_type
 
 CREATE INDEX IF NOT EXISTS idx_health_records_created_at ON health_records(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_health_records_risk_level ON health_records(risk_level);
+CREATE INDEX IF NOT EXISTS idx_health_records_risk_created ON health_records(risk_level, created_at DESC);
 
 ALTER TABLE health_records ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP;
 
