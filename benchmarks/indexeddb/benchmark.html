@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AASHA IndexedDB Performance Benchmark Suite</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #0f172a;
+            color: #e2e8f0;
+            padding: 24px;
+            margin: 0;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 32px;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.5);
+        }
+        h1 {
+            margin-top: 0;
+            font-size: 28px;
+            color: #38bdf8;
+            border-bottom: 2px solid #334155;
+            padding-bottom: 12px;
+        }
+        .controls {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 24px;
+            align-items: center;
+        }
+        select, button {
+            background-color: #334155;
+            color: #f8fafc;
+            border: 1px solid #475569;
+            padding: 10px 16px;
+            font-size: 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            outline: none;
+            transition: all 0.2s;
+        }
+        button:hover {
+            background-color: #475569;
+        }
+        button.primary {
+            background-color: #0284c7;
+            border-color: #0369a1;
+        }
+        button.primary:hover {
+            background-color: #0369a1;
+        }
+        .progress-bar {
+            height: 8px;
+            background-color: #334155;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 24px;
+        }
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background-color: #38bdf8;
+            transition: width 0.1s;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            text-align: left;
+            padding: 12px 16px;
+            border-bottom: 1px solid #334155;
+        }
+        th {
+            background-color: #0f172a;
+            color: #38bdf8;
+        }
+        tr:hover {
+            background-color: #334155;
+        }
+        .output-actions {
+            margin-top: 24px;
+            display: flex;
+            gap: 12px;
+        }
+        .log {
+            background-color: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 6px;
+            padding: 16px;
+            height: 150px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 13px;
+            margin-top: 20px;
+            color: #a7f3d0;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>AASHA IndexedDB Performance Benchmarks</h1>
+    <p>Benchmark read, write, search, update, delete, and bulk insert operations on local IndexedDB.</p>
+    
+    <div class="controls">
+        <label for="record-scale">Scale:</label>
+        <select id="record-scale">
+            <option value="100">100 Records</option>
+            <option value="1000" selected>1,000 Records</option>
+            <option value="10000">10,000 Records</option>
+        </select>
+        <button id="run-bench" class="primary">Execute Benchmark Suite</button>
+    </div>
+
+    <div class="progress-bar">
+        <div id="progress" class="progress-fill"></div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Operation</th>
+                <th>Avg Latency (ms)</th>
+                <th>p95 Latency (ms)</th>
+                <th>Max Latency (ms)</th>
+                <th>Ops/sec</th>
+            </tr>
+        </thead>
+        <tbody id="results-body">
+            <tr><td colspan="5" style="text-align: center; color: #64748b;">No benchmark run executed yet.</td></tr>
+        </tbody>
+    </table>
+
+    <div class="output-actions">
+        <button id="export-json" disabled>Export Raw JSON</button>
+        <button id="export-csv" disabled>Export Raw CSV</button>
+    </div>
+
+    <div id="log" class="log">Console ready...</div>
+</div>
+
+<script>
+    const logEl = document.getElementById('log');
+    const progressEl = document.getElementById('progress');
+    const resultsBody = document.getElementById('results-body');
+    let lastResults = null;
+
+    function log(msg) {
+        logEl.innerHTML += `[${new Date().toLocaleTimeString()}] ${msg}<br>`;
+        logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function getPercentile(arr, p) {
+        const sorted = [...arr].sort((a, b) => a - b);
+        const index = Math.ceil((p / 100) * sorted.length) - 1;
+        return sorted[Math.max(0, index)];
+    }
+
+    async function initDB() {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open('aasha-benchmark-db', 1);
+            request.onupgradeneeded = (e) => {
+                const db = e.target.result;
+                if (!db.objectStoreNames.contains('bench_records')) {
+                    db.createObjectStore('bench_records', { keyPath: 'id' });
+                }
+            };
+            request.onsuccess = (e) => resolve(e.target.result);
+            request.onerror = (e) => reject(e.target.error);
+        });
+    }
+
+    async function clearDB(db) {
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction('bench_records', 'readwrite');
+            const store = tx.objectStore('bench_records');
+            store.clear();
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+        });
+    }
+
+    document.getElementById('run-bench').addEventListener('click', async () => {
+        const count = parseInt(document.getElementById('record-scale').value);
+        progressEl.style.width = '0%';
+        resultsBody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #38bdf8;">Executing tests...</td></tr>';
+        
+        log(`Initializing database and clearing old state for ${count} records...`);
+        const db = await initDB();
+        await clearDB(db);
+        
+        const results = [];
+        
+        // Helper to run a test
+        async function runTest(name, operationFn) {
+            log(`Running ${name}...`);
+            const timings = [];
+            const start = performance.now();
+            await operationFn(timings);
+            const totalDuration = performance.now() - start;
+            
+            const avg = timings.reduce((a, b) => a + b, 0) / timings.length;
+            const p95 = getPercentile(timings, 95);
+            const max = Math.max(...timings);
+            const opsSec = Math.round((timings.length / (totalDuration / 1000)));
+
+            results.push({ name, avg, p95, max, opsSec });
+            log(`${name} completed. Average: ${avg.toFixed(2)}ms, Ops/sec: ${opsSec}`);
+        }
+
+        // 1. Sequential Write
+        progressEl.style.width = '15%';
+        await runTest('Sequential Write', async (timings) => {
+            for (let i = 0; i < count; i++) {
+                const item = { id: `item-${i}`, name: `Patient ${i}`, symptoms: 'Fever and cold', age: 20 + (i % 50) };
+                const t0 = performance.now();
+                await new Promise((resolve) => {
+                    const tx = db.transaction('bench_records', 'readwrite');
+                    tx.objectStore('bench_records').put(item);
+                    tx.oncomplete = resolve;
+                });
+                timings.push(performance.now() - t0);
+            }
+        });
+
+        // 2. Sequential Read
+        progressEl.style.width = '35%';
+        await runTest('Sequential Read', async (timings) => {
+            for (let i = 0; i < count; i++) {
+                const t0 = performance.now();
+                await new Promise((resolve) => {
+                    const tx = db.transaction('bench_records', 'readonly');
+                    const req = tx.objectStore('bench_records').get(`item-${i}`);
+                    req.onsuccess = resolve;
+                });
+                timings.push(performance.now() - t0);
+            }
+        });
+
+        // 3. Search Filter
+        progressEl.style.width = '55%';
+        await runTest('Search (String match)', async (timings) => {
+            // Run 50 query filters to get percentile distributions
+            for (let k = 0; k < 50; k++) {
+                const t0 = performance.now();
+                await new Promise((resolve) => {
+                    const tx = db.transaction('bench_records', 'readonly');
+                    const store = tx.objectStore('bench_records');
+                    const req = store.openCursor();
+                    const matched = [];
+                    req.onsuccess = (e) => {
+                        const cursor = e.target.result;
+                        if (cursor) {
+                            if (cursor.value.name.includes('9') || cursor.value.symptoms.includes('Fever')) {
+                                matched.push(cursor.value);
+                            }
+                            cursor.continue();
+                        } else {
+                            resolve();
+                        }
+                    };
+                });
+                timings.push(performance.now() - t0);
+            }
+        });
+
+        // 4. Sequential Update
+        progressEl.style.width = '75%';
+        await runTest('Sequential Update', async (timings) => {
+            for (let i = 0; i < count; i++) {
+                const t0 = performance.now();
+                await new Promise((resolve) => {
+                    const tx = db.transaction('bench_records', 'readwrite');
+                    const store = tx.objectStore('bench_records');
+                    const getReq = store.get(`item-${i}`);
+                    getReq.onsuccess = () => {
+                        const data = getReq.result;
+                        data.age += 1;
+                        store.put(data);
+                    };
+                    tx.oncomplete = resolve;
+                });
+                timings.push(performance.now() - t0);
+            }
+        });
+
+        // 5. Sequential Delete
+        progressEl.style.width = '90%';
+        await runTest('Sequential Delete', async (timings) => {
+            for (let i = 0; i < count; i++) {
+                const t0 = performance.now();
+                await new Promise((resolve) => {
+                    const tx = db.transaction('bench_records', 'readwrite');
+                    tx.objectStore('bench_records').delete(`item-${i}`);
+                    tx.oncomplete = resolve;
+                });
+                timings.push(performance.now() - t0);
+            }
+        });
+
+        // 6. Bulk Insert
+        progressEl.style.width = '100%';
+        await runTest('Bulk Insert (1 transaction)', async (timings) => {
+            const start = performance.now();
+            await new Promise((resolve) => {
+                const tx = db.transaction('bench_records', 'readwrite');
+                const store = tx.objectStore('bench_records');
+                for (let i = 0; i < count; i++) {
+                    const item = { id: `bulk-${i}`, name: `Bulk Patient ${i}`, symptoms: 'Routine checkup' };
+                    store.put(item);
+                }
+                tx.oncomplete = resolve;
+            });
+            const duration = performance.now() - start;
+            // Record single block duration divided into timings per item
+            for (let i = 0; i < count; i++) {
+                timings.push(duration / count);
+            }
+        });
+
+        // Display results
+        lastResults = results;
+        resultsBody.innerHTML = '';
+        results.forEach(r => {
+            resultsBody.innerHTML += `
+                <tr>
+                    <td><strong>${r.name}</strong></td>
+                    <td>${r.avg.toFixed(3)} ms</td>
+                    <td>${r.p95.toFixed(3)} ms</td>
+                    <td>${r.max.toFixed(3)} ms</td>
+                    <td>${r.opsSec} ops/s</td>
+                </tr>
+            `;
+        });
+
+        document.getElementById('export-json').removeAttribute('disabled');
+        document.getElementById('export-csv').removeAttribute('disabled');
+        log('IndexedDB benchmark suite completed successfully.');
+    });
+
+    document.getElementById('export-json').addEventListener('click', () => {
+        if (!lastResults) return;
+        const count = document.getElementById('record-scale').value;
+        const filename = `idb_benchmark_${count}_records_${Date.now()}.json`;
+        const blob = new Blob([JSON.stringify(lastResults, null, 2)], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = filename;
+        a.click();
+    });
+
+    document.getElementById('export-csv').addEventListener('click', () => {
+        if (!lastResults) return;
+        const count = document.getElementById('record-scale').value;
+        const filename = `idb_benchmark_${count}_records_${Date.now()}.csv`;
+        let csvContent = 'Operation,Avg Latency (ms),p95 Latency (ms),Max Latency (ms),Ops/sec\n';
+        lastResults.forEach(r => {
+            csvContent += `"${r.name}",${r.avg.toFixed(3)},${r.p95.toFixed(3)},${r.max.toFixed(3)},${r.opsSec}\n`;
+        });
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = filename;
+        a.click();
+    });
+</script>
+</body>
+</html>

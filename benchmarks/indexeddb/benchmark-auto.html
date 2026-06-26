@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AASHA IndexedDB Automated Performance Benchmark</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #0f172a;
+            color: #e2e8f0;
+            padding: 24px;
+            margin: 0;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 32px;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.5);
+        }
+        h1 {
+            margin-top: 0;
+            font-size: 28px;
+            color: #38bdf8;
+            border-bottom: 2px solid #334155;
+            padding-bottom: 12px;
+        }
+        .status {
+            padding: 16px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 6px;
+            color: #34d399;
+            font-family: monospace;
+            margin-bottom: 20px;
+        }
+        .progress-bar {
+            height: 8px;
+            background-color: #334155;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 24px;
+        }
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background-color: #38bdf8;
+            transition: width 0.1s;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            text-align: left;
+            padding: 12px 16px;
+            border-bottom: 1px solid #334155;
+        }
+        th {
+            background-color: #0f172a;
+            color: #38bdf8;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>AASHA IndexedDB Automated Performance Benchmarks</h1>
+    <p>This page executes the IndexedDB benchmarks 3 times for scales 100, 1,000, and 10,000 records. Once complete, results will be available in <code>window.benchmarkResults</code>.</p>
+    
+    <div id="status" class="status">Initializing...</div>
+
+    <div class="progress-bar">
+        <div id="progress" class="progress-fill"></div>
+    </div>
+
+    <button id="start-btn" style="background-color:#0284c7; color:#fff; border:none; padding:12px 24px; font-size:16px; border-radius:6px; cursor:pointer;">Start Automated Suite</button>
+
+    <div style="margin-top: 24px;">
+        <table id="results-table">
+            <thead>
+                <tr>
+                    <th>Scale</th>
+                    <th>Operation</th>
+                    <th>Mean Latency</th>
+                    <th>Std Dev</th>
+                    <th>p95</th>
+                    <th>p99</th>
+                    <th>Ops/sec</th>
+                    <th>Memory (MB)</th>
+                    <th>Storage (KB)</th>
+                </tr>
+            </thead>
+            <tbody id="results-body">
+                <tr><td colspan="9" style="text-align: center; color: #64748b;">Click "Start Automated Suite" to begin.</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    const statusEl = document.getElementById('status');
+    const progressEl = document.getElementById('progress');
+    const resultsBody = document.getElementById('results-body');
+    const startBtn = document.getElementById('start-btn');
+
+    window.benchmarkResults = null;
+    window.benchmarkStatus = "idle";
+
+    function log(msg) {
+        statusEl.innerText = msg;
+        console.log(msg);
+    }
+
+    function getPercentile(arr, p) {
+        const sorted = [...arr].sort((a, b) => a - b);
+        const index = Math.ceil((p / 100) * sorted.length) - 1;
+        return sorted[Math.max(0, index)];
+    }
+
+    function calculateStats(values) {
+        const n = values.length;
+        if (n === 0) return { mean: 0, stddev: 0, variance: 0, variancePct: 0 };
+        const mean = values.reduce((a, b) => a + b, 0) / n;
+        const variance = values.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / n;
+        const stddev = Math.sqrt(variance);
+        const variancePct = mean > 0 ? (stddev / mean) * 100 : 0;
+        return { mean, stddev, variance, variancePct };
+    }
+
+    async function initDB() {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open('aasha-automated-db', 1);
+            request.onupgradeneeded = (e) => {
+                const db = e.target.result;
+                if (!db.objectStoreNames.contains('bench_records')) {
+                    db.createObjectStore('bench_records', { keyPath: 'id' });
+                }
+            };
+            request.onsuccess = (e) => resolve(e.target.result);
+            request.onerror = (e) => reject(e.target.error);
+        });
+    }
+
+    async function clearDB(db) {
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction('bench_records', 'readwrite');
+            const store = tx.objectStore('bench_records');
+            store.clear();
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+        });
+    }
+
+    async function runBenchmarkSuite() {
+        window.benchmarkStatus = "running";
+        startBtn.disabled = true;
+        log("Opening IndexedDB...");
+        const db = await initDB();
+
+        const scales = [100, 1000, 10000];
+        const operations = [
+            { name: 'Write', run: async (db, count, timings) => {
+                for (let i = 0; i < count; i++) {
+                    const item = { id: `item-${i}`, name: `Patient ${i}`, symptoms: 'Fever and cold', age: 20 + (i % 50) };
+                    const t0 = performance.now();
+                    await new Promise((resolve) => {
+                        const tx = db.transaction('bench_records', 'readwrite');
+                        tx.objectStore('bench_records').put(item);
+                        tx.oncomplete = resolve;
+                    });
+                    timings.push(performance.now() - t0);
+                }
+            }},
+            { name: 'Read', run: async (db, count, timings) => {
+                for (let i = 0; i < count; i++) {
+                    const t0 = performance.now();
+                    await new Promise((resolve) => {
+                        const tx = db.transaction('bench_records', 'readonly');
+                        const req = tx.objectStore('bench_records').get(`item-${i}`);
+                        req.onsuccess = resolve;
+                    });
+                    timings.push(performance.now() - t0);
+                }
+            }},
+            { name: 'Search', run: async (db, count, timings) => {
+                for (let k = 0; k < 10; k++) { // Run 10 full scans
+                    const t0 = performance.now();
+                    await new Promise((resolve) => {
+                        const tx = db.transaction('bench_records', 'readonly');
+                        const store = tx.objectStore('bench_records');
+                        const req = store.openCursor();
+                        const matched = [];
+                        req.onsuccess = (e) => {
+                            const cursor = e.target.result;
+                            if (cursor) {
+                                if (cursor.value.name.includes('9') || cursor.value.symptoms.includes('Fever')) {
+                                    matched.push(cursor.value);
+                                }
+                                cursor.continue();
+                            } else {
+                                resolve();
+                            }
+                        };
+                    });
+                    timings.push(performance.now() - t0);
+                }
+            }},
+            { name: 'Update', run: async (db, count, timings) => {
+                for (let i = 0; i < count; i++) {
+                    const t0 = performance.now();
+                    await new Promise((resolve) => {
+                        const tx = db.transaction('bench_records', 'readwrite');
+                        const store = tx.objectStore('bench_records');
+                        const getReq = store.get(`item-${i}`);
+                        getReq.onsuccess = () => {
+                            const data = getReq.result;
+                            if (data) {
+                                data.age += 1;
+                                store.put(data);
+                            }
+                        };
+                        tx.oncomplete = resolve;
+                    });
+                    timings.push(performance.now() - t0);
+                }
+            }},
+            { name: 'Delete', run: async (db, count, timings) => {
+                for (let i = 0; i < count; i++) {
+                    const t0 = performance.now();
+                    await new Promise((resolve) => {
+                        const tx = db.transaction('bench_records', 'readwrite');
+                        tx.objectStore('bench_records').delete(`item-${i}`);
+                        tx.oncomplete = resolve;
+                    });
+                    timings.push(performance.now() - t0);
+                }
+            }},
+            { name: 'Bulk Insert', run: async (db, count, timings) => {
+                const t0 = performance.now();
+                await new Promise((resolve) => {
+                    const tx = db.transaction('bench_records', 'readwrite');
+                    const store = tx.objectStore('bench_records');
+                    for (let i = 0; i < count; i++) {
+                        const item = { id: `bulk-${i}`, name: `Bulk Patient ${i}`, symptoms: 'Routine checkup' };
+                        store.put(item);
+                    }
+                    tx.oncomplete = resolve;
+                });
+                const totalDuration = performance.now() - t0;
+                // Distribute total transaction duration across count items
+                for (let i = 0; i < count; i++) {
+                    timings.push(totalDuration / count);
+                }
+            }}
+        ];
+
+        const allResults = [];
+        resultsBody.innerHTML = '';
+
+        let totalSteps = scales.length * operations.length * 3;
+        let currentStep = 0;
+
+        for (const scale of scales) {
+            for (const op of operations) {
+                const runTimings = [];
+                const runThroughputs = [];
+                
+                log(`Starting ${op.name} benchmark at scale ${scale}...`);
+                
+                // Repeat 3 times
+                for (let run = 1; run <= 3; run++) {
+                    currentStep++;
+                    progressEl.style.width = `${(currentStep / totalSteps) * 100}%`;
+                    
+                    log(`Scale: ${scale} | Op: ${op.name} | Run: ${run}/3`);
+                    await clearDB(db);
+                    
+                    // Pre-fill DB if doing read/search/update/delete
+                    if (['Read', 'Search', 'Update', 'Delete'].includes(op.name)) {
+                        await new Promise((resolve) => {
+                            const tx = db.transaction('bench_records', 'readwrite');
+                            const store = tx.objectStore('bench_records');
+                            for (let i = 0; i < scale; i++) {
+                                store.put({ id: `item-${i}`, name: `Patient ${i}`, symptoms: 'Fever and cold', age: 20 + (i % 50) });
+                            }
+                            tx.oncomplete = resolve;
+                        });
+                    }
+
+                    const timings = [];
+                    const start = performance.now();
+                    await op.run(db, scale, timings);
+                    const totalDuration = performance.now() - start;
+
+                    const opsSec = timings.length / (totalDuration / 1000);
+                    runTimings.push(...timings);
+                    runThroughputs.push(opsSec);
+                    
+                    // Pause briefly
+                    await new Promise(r => setTimeout(r, 200));
+                }
+
+                // Analyze combined metrics from the 3 runs
+                const stats = calculateStats(runTimings);
+                const median = getPercentile(runTimings, 50);
+                const p95 = getPercentile(runTimings, 95);
+                const p99 = getPercentile(runTimings, 99);
+                const avgOpsSec = runThroughputs.reduce((a, b) => a + b, 0) / runThroughputs.length;
+
+                // Collect memory and storage metrics
+                let heapUsed = 0;
+                if (window.performance && window.performance.memory) {
+                    heapUsed = window.performance.memory.usedJSHeapSize / (1024 * 1024);
+                }
+                
+                let storageUsage = 0;
+                if (navigator.storage && navigator.storage.estimate) {
+                    const estimate = await navigator.storage.estimate();
+                    storageUsage = estimate.usage / 1024; // KB
+                }
+
+                const resultRecord = {
+                    scale,
+                    operation: op.name,
+                    meanMs: stats.mean,
+                    medianMs: median,
+                    p95Ms: p95,
+                    p99Ms: p99,
+                    opsSec: avgOpsSec,
+                    stdDevMs: stats.stddev,
+                    variancePct: stats.variancePct,
+                    memoryUsedMb: heapUsed,
+                    storageUsageKb: storageUsage
+                };
+                
+                allResults.push(resultRecord);
+
+                resultsBody.innerHTML += `
+                    <tr>
+                        <td><strong>${scale}</strong></td>
+                        <td>${op.name}</td>
+                        <td>${stats.mean.toFixed(3)} ms</td>
+                        <td>${stats.stddev.toFixed(3)} ms (${stats.variancePct.toFixed(1)}%)</td>
+                        <td>${p95.toFixed(3)} ms</td>
+                        <td>${p99.toFixed(3)} ms</td>
+                        <td>${Math.round(avgOpsSec)} ops/s</td>
+                        <td>${heapUsed.toFixed(2)} MB</td>
+                        <td>${storageUsage.toFixed(1)} KB</td>
+                    </tr>
+                `;
+            }
+        }
+
+        log("Benchmark suite complete! Saving results...");
+        window.benchmarkResults = allResults;
+        window.benchmarkStatus = "complete";
+    }
+
+    startBtn.addEventListener('click', runBenchmarkSuite);
+</script>
+</body>
+</html>

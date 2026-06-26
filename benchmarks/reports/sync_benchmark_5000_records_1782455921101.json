@@ -1,0 +1,32 @@
+{
+  "queueSize": 5000,
+  "payloadSizeKb": 1861.85,
+  "durationMsAvg": 56901.04,
+  "durationMsStdDev": 1469.32,
+  "durationMsVariancePct": 2.58,
+  "recordsPerSecAvg": 88,
+  "runs": [
+    {
+      "durationMs": 58972.36,
+      "payloadSizeKb": 1861.85,
+      "recordsPerSec": 85,
+      "synced": 5000,
+      "duplicates": 0
+    },
+    {
+      "durationMs": 56008.84,
+      "payloadSizeKb": 1861.85,
+      "recordsPerSec": 89,
+      "synced": 5000,
+      "duplicates": 0
+    },
+    {
+      "durationMs": 55721.93,
+      "payloadSizeKb": 1861.85,
+      "recordsPerSec": 90,
+      "synced": 5000,
+      "duplicates": 0
+    }
+  ],
+  "timestamp": "2026-06-26T06:38:41.101Z"
+}

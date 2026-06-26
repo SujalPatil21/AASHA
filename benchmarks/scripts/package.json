@@ -1,0 +1,9 @@
+{
+  "name": "aasha-benchmark-scripts",
+  "version": "1.0.0",
+  "description": "Helper scripts and dependencies for AASHA production benchmarks",
+  "main": "sync-bench.js",
+  "dependencies": {
+    "playwright": "^1.49.0"
+  }
+}

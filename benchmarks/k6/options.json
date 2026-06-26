@@ -1,0 +1,29 @@
+{
+  "scenarios": {
+    "scale_10_vus": {
+      "executor": "constant-vus",
+      "vus": 10,
+      "duration": "30s"
+    },
+    "scale_50_vus": {
+      "executor": "constant-vus",
+      "vus": 50,
+      "duration": "1m"
+    },
+    "scale_100_vus": {
+      "executor": "constant-vus",
+      "vus": 100,
+      "duration": "1m"
+    },
+    "scale_250_vus": {
+      "executor": "constant-vus",
+      "vus": 250,
+      "duration": "1m"
+    },
+    "scale_500_vus": {
+      "executor": "constant-vus",
+      "vus": 500,
+      "duration": "2m"
+    }
+  }
+}

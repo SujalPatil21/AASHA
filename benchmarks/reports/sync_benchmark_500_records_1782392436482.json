@@ -1,0 +1,9 @@
+{
+  "queueSize": 500,
+  "durationMs": 1450.56,
+  "payloadSizeKb": 185.21,
+  "recordsPerSec": 345,
+  "synced": 500,
+  "duplicates": 0,
+  "timestamp": "2026-06-25T13:00:36.482Z"
+}

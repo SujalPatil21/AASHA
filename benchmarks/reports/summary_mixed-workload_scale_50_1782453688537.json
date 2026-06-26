@@ -1,0 +1,23 @@
+{
+  "script": "mixed-workload",
+  "scale": "scale_50",
+  "throughput": 106.49888022742284,
+  "latencyAvg": 350.5517844236967,
+  "latencyMedian": 337.6749,
+  "latencyP95": 453.34566333333333,
+  "latencyP99": 562.35727,
+  "latencyMax": 930.3585,
+  "errorRate": 0,
+  "dataRecKb": 14818.756184895834,
+  "dataSentKb": 363.9482421875,
+  "telemetry": {
+    "avgCpuProcess": 50.302435436417134,
+    "maxHeapUsedMb": 5.6759033203125,
+    "maxHikariActive": 6,
+    "gcCount": 2.6666666666666665,
+    "gcPauseTimeMs": 84.33333333333334
+  },
+  "variancePct": 3.6364171285752604,
+  "runsCount": 3,
+  "timestamp": "2026-06-26T06:01:28.537Z"
+}
