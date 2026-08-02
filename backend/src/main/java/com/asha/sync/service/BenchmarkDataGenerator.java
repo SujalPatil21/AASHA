@@ -2,6 +2,8 @@ package com.asha.sync.service;
 
 import com.asha.sync.model.HealthRecord;
 import com.asha.sync.repository.HealthRecordRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,6 +15,9 @@ import java.util.*;
 public class BenchmarkDataGenerator {
 
     private final HealthRecordRepository healthRecordRepository;
+    
+    @PersistenceContext
+    private EntityManager entityManager;
 
     public BenchmarkDataGenerator(HealthRecordRepository healthRecordRepository) {
         this.healthRecordRepository = healthRecordRepository;
@@ -106,6 +111,8 @@ public class BenchmarkDataGenerator {
 
             if (batch.size() >= batchSize) {
                 healthRecordRepository.saveAll(batch);
+                entityManager.flush();
+                entityManager.clear();
                 totalSaved += batch.size();
                 batch.clear();
             }
@@ -113,6 +120,8 @@ public class BenchmarkDataGenerator {
 
         if (!batch.isEmpty()) {
             healthRecordRepository.saveAll(batch);
+            entityManager.flush();
+            entityManager.clear();
             totalSaved += batch.size();
         }
 
