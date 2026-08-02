@@ -2,8 +2,6 @@ package com.asha.sync.service;
 
 import com.asha.sync.model.HealthRecord;
 import com.asha.sync.repository.HealthRecordRepository;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,9 +13,6 @@ import java.util.*;
 public class BenchmarkDataGenerator {
 
     private final HealthRecordRepository healthRecordRepository;
-    
-    @PersistenceContext
-    private EntityManager entityManager;
 
     public BenchmarkDataGenerator(HealthRecordRepository healthRecordRepository) {
         this.healthRecordRepository = healthRecordRepository;
@@ -28,17 +23,18 @@ public class BenchmarkDataGenerator {
         // Deterministic seed for repeatable datasets
         Random random = new Random(42);
 
-        String[] firstNames = {"Rajesh", "Priya", "Amit", "Sunita", "Anil", "Meena", "Sanjay", "Kavita", "Ramesh", "Deepa"};
-        String[] lastNames = {"Sharma", "Patel", "Kumar", "Singh", "Joshi", "Verma", "Gupta", "Reddy", "Nair", "Das"};
-        String[] patientTypes = {"PREGNANT", "CHILD", "ADULT", "ELDER"};
-        String[] languages = {"en", "hi", "te", "ta"};
+        String[] firstNames = { "Rajesh", "Priya", "Amit", "Sunita", "Anil", "Meena", "Sanjay", "Kavita", "Ramesh",
+                "Deepa" };
+        String[] lastNames = { "Sharma", "Patel", "Kumar", "Singh", "Joshi", "Verma", "Gupta", "Reddy", "Nair", "Das" };
+        String[] patientTypes = { "PREGNANT", "CHILD", "ADULT", "ELDER" };
+        String[] languages = { "en", "hi", "te", "ta" };
         String[] symptoms = {
-            "Fever and headache for 3 days",
-            "Swelling in feet and high blood pressure",
-            "Severe breathing issues and cough",
-            "Minor bleeding and mild fever",
-            "Routine checkup, feeling normal",
-            "Persistent cough and body ache for 5 days"
+                "Fever and headache for 3 days",
+                "Swelling in feet and high blood pressure",
+                "Severe breathing issues and cough",
+                "Minor bleeding and mild fever",
+                "Routine checkup, feeling normal",
+                "Persistent cough and body ache for 5 days"
         };
 
         List<HealthRecord> batch = new ArrayList<>();
@@ -50,7 +46,7 @@ public class BenchmarkDataGenerator {
             String firstName = firstNames[random.nextInt(firstNames.length)];
             String lastName = lastNames[random.nextInt(lastNames.length)];
             String name = firstName + " " + lastName;
-            
+
             String patientType = patientTypes[random.nextInt(patientTypes.length)];
             int age = 1 + random.nextInt(90);
             if ("PREGNANT".equals(patientType)) {
@@ -76,7 +72,8 @@ public class BenchmarkDataGenerator {
             if ("PREGNANT".equals(patientType)) {
                 if (Boolean.TRUE.equals(structured.get("bleeding"))) {
                     riskLevel = "Critical";
-                } else if (Boolean.TRUE.equals(structured.get("highBP")) && Boolean.TRUE.equals(structured.get("swelling"))) {
+                } else if (Boolean.TRUE.equals(structured.get("highBP"))
+                        && Boolean.TRUE.equals(structured.get("swelling"))) {
                     riskLevel = "High";
                 } else if (asInt(structured.get("feverDays")) >= 4) {
                     riskLevel = "Medium";
@@ -111,8 +108,6 @@ public class BenchmarkDataGenerator {
 
             if (batch.size() >= batchSize) {
                 healthRecordRepository.saveAll(batch);
-                entityManager.flush();
-                entityManager.clear();
                 totalSaved += batch.size();
                 batch.clear();
             }
@@ -120,8 +115,6 @@ public class BenchmarkDataGenerator {
 
         if (!batch.isEmpty()) {
             healthRecordRepository.saveAll(batch);
-            entityManager.flush();
-            entityManager.clear();
             totalSaved += batch.size();
         }
 
