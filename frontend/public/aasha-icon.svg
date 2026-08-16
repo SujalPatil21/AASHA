@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Rounded teal background -->
+  <rect width="64" height="64" rx="14" fill="#087F73"/>
+
+  <!-- Subtle inner glow ring -->
+  <rect width="64" height="64" rx="14" fill="url(#gloss)" opacity="0.18"/>
+
+  <!-- Heart shape (white) — classic heart via two arcs -->
+  <path
+    d="M32 46 C32 46 14 34 14 23
+       C14 17.5 18.5 13 24 13
+       C27.2 13 30 14.8 32 17.2
+       C34 14.8 36.8 13 40 13
+       C45.5 13 50 17.5 50 23
+       C50 34 32 46 32 46 Z"
+    fill="white"
+    opacity="0.95"
+  />
+
+  <!-- ECG / health waveform across the heart — teal line -->
+  <polyline
+    points="16,26  21,26  24,20  27,32  30,24  33,28  36,26  48,26"
+    fill="none"
+    stroke="#087F73"
+    stroke-width="2.6"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+
+  <defs>
+    <linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="white" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="white" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+</svg>
