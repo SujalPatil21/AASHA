@@ -8,13 +8,13 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'vite.svg', 'pwa-192x192.png', 'pwa-512x512.png'],
+      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'aasha-icon.svg', 'pwa-192x192.png', 'pwa-512x512.png'],
       manifest: {
         name: 'AASHA Health Console',
         short_name: 'AASHA',
         description: 'AI-Powered Offline-First Community Health Worker Assistant',
-        theme_color: '#0f8f5a',
-        background_color: '#f9f9f9',
+        theme_color: '#087F73',
+        background_color: '#F4F8F5',
         display: 'standalone',
         orientation: 'portrait',
         start_url: '/',
