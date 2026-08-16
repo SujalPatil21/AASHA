@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AASHA - Interview Revision Cheat Sheet</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      color: #1e293b;
+      background-color: #f1f5f9;
+      line-height: 1.35;
+      font-size: 10px;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    @page {
+      size: A4 portrait;
+      margin: 0;
+    }
+
+    .page {
+      width: 210mm;
+      height: 297mm;
+      padding: 10mm 12mm;
+      background-color: #ffffff;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      page-break-after: always;
+    }
+
+    .page:last-child {
+      page-break-after: avoid;
+    }
+
+    /* Header */
+    header {
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 6px;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+
+    .header-left h1 {
+      font-size: 18px;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.5px;
+    }
+
+    .header-left h1 span {
+      color: #0f8f5a;
+    }
+
+    .header-left p {
+      font-size: 9.5px;
+      color: #64748b;
+      font-weight: 500;
+    }
+
+    .page-num {
+      font-size: 9px;
+      font-weight: 700;
+      color: #94a3b8;
+    }
+
+    /* Titles */
+    h2 {
+      font-size: 11px;
+      font-weight: 700;
+      color: #0f172a;
+      text-transform: uppercase;
+      margin-top: 8px;
+      margin-bottom: 5px;
+      border-left: 3px solid #0f8f5a;
+      padding-left: 6px;
+      letter-spacing: 0.3px;
+    }
+
+    /* Layout Grids */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 5px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 5px;
+    }
+
+    .card {
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 6px 8px;
+      background-color: #f8fafc;
+    }
+
+    .card.highlight {
+      background-color: #f0fdf4;
+      border-color: #bbf7d0;
+    }
+
+    .card h3 {
+      font-size: 10px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 3px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .status-badge {
+      font-size: 8px;
+      padding: 1px 4px;
+      border-radius: 3px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .badge-implemented {
+      background-color: #dcfce7;
+      color: #166534;
+    }
+
+    .badge-planned {
+      background-color: #fef9c3;
+      color: #854d0e;
+    }
+
+    .badge-unverified {
+      background-color: #fee2e2;
+      color: #991b1b;
+    }
+
+    /* Lists */
+    ul {
+      list-style-type: none;
+    }
+
+    li {
+      position: relative;
+      padding-left: 8px;
+      margin-bottom: 2px;
+    }
+
+    li style-term {
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    li::before {
+      content: "•";
+      color: #0f8f5a;
+      font-weight: bold;
+      position: absolute;
+      left: 0;
+    }
+
+    /* Diagrams */
+    .flow-line {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background-color: #f1f5f9;
+      padding: 5px 8px;
+      border-radius: 5px;
+      margin-bottom: 5px;
+      font-weight: 600;
+      font-size: 8.5px;
+    }
+
+    .flow-step {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      padding: 2px 4px;
+      border-radius: 3px;
+      color: #334155;
+    }
+
+    .flow-step.active {
+      background: #0f8f5a;
+      color: #ffffff;
+      border-color: #0d7c4e;
+    }
+
+    .arrow {
+      color: #94a3b8;
+      font-weight: bold;
+    }
+
+    /* Simple Table */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 5px;
+    }
+
+    th,
+    td {
+      border: 1px solid #e2e8f0;
+      padding: 3px 5px;
+      text-align: left;
+      font-size: 9px;
+    }
+
+    th {
+      background-color: #f8fafc;
+      color: #0f172a;
+      font-weight: 700;
+    }
+
+    .code-text {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 8.5px;
+      background-color: #f1f5f9;
+      padding: 1px 3px;
+      border-radius: 3px;
+      color: #0f172a;
+    }
+
+    .term-title {
+      font-weight: 800;
+      color: #0f8f5a;
+    }
+
+    /* Footer styling */
+    footer {
+      border-top: 1px solid #e2e8f0;
+      padding-top: 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 8.5px;
+      color: #94a3b8;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- PAGE 1 -->
+  <div class="page">
+    <div>
+      <header>
+        <div class="header-left">
+          <h1>AASHA — <span>Interview Cheat Sheet</span></h1>
+          <p>Offline-First Health Data & Rule-Based Risk Flagging System</p>
+        </div>
+        <div class="page-num">Page 1 of 2</div>
+      </header>
+
+      <!-- 1. What problem does AASHA solve? -->
+      <h2>1. What problem does AASHA solve?</h2>
+      <div class="grid-2">
+        <div class="card highlight">
+          <h3>The Context & Constraints</h3>
+          <ul>
+            <li><strong>Rural Connectivity Constraints:</strong> ASHA workers operate in remote villages where internet connection is spotty, slow, or completely absent.</li>
+            <li><strong>Data Collection Delays:</strong> Traditional systems crash or freeze without internet, forcing workers back to paper logs and delaying reporting to health centres.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>The AASHA Solution</h3>
+          <ul>
+            <li><span class="term-title">Offline-first</span><br><i>Meaning:</i> The app works even when there is no internet.<br><i>In AASHA:</i> Allows health workers to log visits, process languages, and evaluate patient risk with zero connection.</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- 2. What is the basic idea? -->
+      <h2>2. What is the basic idea?</h2>
+      <div class="flow-line">
+        <span class="flow-step active">1. Input Text/Voice</span>
+        <span class="arrow">→</span>
+        <span class="flow-step">2. Local Regex/NLP Parse</span>
+        <span class="arrow">→</span>
+        <span class="flow-step">3. Save to IndexedDB</span>
+        <span class="arrow">→</span>
+        <span class="flow-step">4. Local Risk Flag</span>
+        <span class="arrow">→</span>
+        <span class="flow-step">5. Auto-Sync on Internet</span>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Write-First, Sync-Later</h3>
+          <p>ASHA workers capture observations directly on-device. The application extracts symptoms and immediately sets the patient risk level offline. When an internet connection becomes available, the client automatically sends the saved health records to the server.</p>
+        </div>
+        <div class="card">
+          <h3>No Diagnosis — Risk Flagging Only</h3>
+          <ul>
+            <li><span class="term-title">Risk flagging</span><br><i>Meaning:</i> Checking health information against rules to identify potentially risky cases.<br><i>In AASHA:</i> We parse observation logs to count fever days, detect high blood pressure, and flag critical patients without making a medical diagnosis.</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- 3. What are the main components and what does each do? -->
+      <h2>3. What are the main components and what does each do?</h2>
+      <div class="grid-3">
+        <div class="card">
+          <h3>Frontend (PWA Client) <span class="status-badge badge-implemented">Implemented</span></h3>
+          <ul>
+            <li><span class="term-title">PWA</span><br><i>Meaning:</i> A web app that works like a mobile app and runs offline.<br><i>In AASHA:</i> Holds the UI, local IndexedDB storage, and client-side regex parsing engines.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Backend (Spring Boot) <span class="status-badge badge-implemented">Implemented</span></h3>
+          <ul>
+            <li><span class="term-title">Spring Boot</span><br><i>Meaning:</i> The framework we use to build the backend.<br><i>In AASHA:</i> Handles HTTP requests, runs the server-side risk engine, and coordinates database writes.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>AI Service (Bedrock Client) <span class="status-badge badge-implemented">Implemented</span></h3>
+          <p>Sends records to AWS Bedrock to extract symptoms and get an explainable risk rationale when data is synchronized to the server.</p>
+        </div>
+      </div>
+      <div class="grid-2" style="margin-top: 4px;">
+        <div class="card">
+          <h3>Voice Speech-to-Text <span class="status-badge badge-implemented">Implemented</span></h3>
+          <p>Uses browser's native <span class="code-text">webkitSpeechRecognition</span> to listen to voice notes and convert speech to text on the worker's device.</p>
+        </div>
+        <div class="card">
+          <h3>External Python AI Service <span class="status-badge badge-unverified">Unverified Resume Claim</span></h3>
+          <p>The README claims a separate Python NLP + Risk Engine service exists. <strong>Methodology not verified:</strong> No such directory exists; Spring Boot interacts with Bedrock directly.</p>
+        </div>
+      </div>
+
+      <!-- 4. How does an ASHA worker create a record? -->
+      <h2>4. How does an ASHA worker create a record?</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>1. Inputs Metadata & Narrative</h3>
+          <p>The worker enters basic patient data (Name, Age, Phone, Patient Type) and dictates or types the case narrative (e.g. "pregnant patient has foot swelling and high blood pressure").</p>
+        </div>
+        <div class="card">
+          <h3>2. Immediate Local Assessment</h3>
+          <p>The local Javascript parser extracts symptoms (e.g. "swelling" and "high bp"). It runs the local rule engine to flag the patient as "High" risk, saving it instantly to the offline database.</p>
+        </div>
+      </div>
+
+      <!-- 5. What happens when there is NO internet? -->
+      <h2>5. What happens when there is NO internet?</h2>
+      <div class="grid-2">
+        <div class="card highlight">
+          <h3>Local Storage & Draft Auto-Save</h3>
+          <ul>
+            <li><span class="term-title">IndexedDB</span><br><i>Meaning:</i> A browser database used to store data locally.<br><i>In AASHA:</i> We use it to save patient records with a <span class="code-text">pending</span> status when offline.</li>
+            <li><strong>Auto-Save Drafts:</strong> Form values are saved to IndexedDB on every keypress so data isn't lost if the browser tab closes.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Offline Soft-Deletes</h3>
+          <p>When a worker deletes a patient record offline, the app marks the record's status as <span class="code-text">pending-delete</span> instead of removing it. The record is deleted from the server when connectivity returns.</p>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <span>AASHA Technical Interview Cheat Sheet</span>
+      <span>August 2026</span>
+    </footer>
+  </div>
+
+  <!-- PAGE 2 -->
+  <div class="page">
+    <div>
+      <header>
+        <div class="header-left">
+          <h1>AASHA — <span>Interview Cheat Sheet</span></h1>
+          <p>Offline-First Health Data & Rule-Based Risk Flagging System</p>
+        </div>
+        <div class="page-num">Page 2 of 2</div>
+      </header>
+
+      <!-- 6. What happens when internet comes back? -->
+      <h2>6. What happens when internet comes back?</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Online Reachability Check</h3>
+          <p>The app regularly checks network reachability by fetching a small response from Google's servers and the backend server. It triggers sync only when true internet reachability is confirmed.</p>
+        </div>
+        <div class="card highlight">
+          <h3>Synchronization & Resolving Conflicts (LWW)</h3>
+          <ul>
+            <li><span class="term-title">Synchronization</span><br><i>Meaning:</i> Sending locally saved records to the server when internet returns.<br><i>In AASHA:</i> The client pushes all pending offline updates in a batch to the backend.</li>
+            <li><strong>Last-Write-Wins (LWW):</strong> The server compares timestamps. It ignores the incoming sync record if the database has a newer or identical <span class="code-text">updatedAt</span> timestamp.</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- 7. How does the frontend communicate with the Spring Boot backend? -->
+      <h2>7. How does the frontend communicate with the Spring Boot backend?</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>API Calls & Batch Payloads</h3>
+          <ul>
+            <li><span class="term-title">REST API</span><br><i>Meaning:</i> A way for the frontend and backend to communicate.<br><i>In AASHA:</i> The client posts JSON payloads to <span class="code-text">/api/sync</span> (for batch uploads) and sends <span class="code-text">DELETE</span> calls to <span class="code-text">/api/records/{id}</span>.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Communication Sequence</h3>
+          <div class="flow-line" style="font-size: 8px;">
+            <span>Client</span>
+            <span>→ POST /api/sync (Batch JSON) →</span>
+            <span>Server</span>
+            <span>→ Responds {synced: N, duplicates: M} →</span>
+            <span>Client marks 'synced'</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 8. How is the data stored in PostgreSQL? -->
+      <h2>8. How is the data stored in PostgreSQL?</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Relational Storage & Schema</h3>
+          <ul>
+            <li><span class="term-title">PostgreSQL</span><br><i>Meaning:</i> The database where the server stores health records.<br><i>In AASHA:</i> Persists metadata, timestamps, and patient categories in a structured table called <span class="code-text">health_records</span>.</li>
+            <li><span class="term-title">JPA/Hibernate</span><br><i>Meaning:</i> Tools that connect Java objects with database tables.<br><i>In AASHA:</i> Maps the Java <span class="code-text">HealthRecord</span> entity class to our PostgreSQL database tables.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>JSONB for Dynamic Symptoms</h3>
+          <p>Symptoms vary wildly by patient. The backend stores dynamic symptom details inside a PostgreSQL <span class="code-text">jsonb</span> column named <span class="code-text">structured_json</span>, mapped to a Java Map object.</p>
+        </div>
+      </div>
+
+      <!-- 9. How does risk flagging work? -->
+      <h2>9. How does risk flagging work?</h2>
+      <div class="grid-2">
+        <div class="card highlight">
+          <h3>Rule-Based Decision Logic</h3>
+          <p>Rules run locally in JavaScript and server-side in Java:</p>
+          <ul style="font-size: 9.5px; margin-top: 4px;">
+            <li><strong>Pregnant:</strong> Bleeding &rarr; <strong>Critical</strong>; High BP + Swelling &rarr; <strong>High</strong>; Fever &ge; 4 days &rarr; <strong>Medium</strong>.</li>
+            <li><strong>Child / Adult / Elder:</strong> Breathing Issue &rarr; <strong>High</strong>. Fever &ge; Elder (3 days), Child (4 days), Adult (5 days) &rarr; <strong>Medium</strong>.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Backend AI Triage</h3>
+          <p>When online, the Spring Boot app calls AWS Bedrock to extract symptom tags and generate a human-readable reason (e.g. "high risk due to breathing trouble and advanced age") for PHC dashboards.</p>
+        </div>
+      </div>
+
+      <!-- 10. What exactly did we test with k6? -->
+      <h2>10. What exactly did we test with k6?</h2>
+      <div class="grid-2" style="margin-bottom: 4px;">
+        <div class="card">
+          <ul>
+            <li><span class="term-title">k6</span><br><i>Meaning:</i> A tool that simulates users to test how much load the backend can handle.<br><i>In AASHA:</i> We ran load and stress tests against the backend endpoints to verify server scalability under heavy concurrent sync operations.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Simulated Scenarios</h3>
+          <p>Simulated 10 to 500 Virtual Users (VUs) writing and fetching records. Throughput peaked at 522 requests/sec. Under mixed load (70% GET, 20% POST, 10% Sync), P95 latencies remained stable under 500ms at 100 VUs.</p>
+        </div>
+      </div>
+
+      <!-- Interview Rapid Fire -->
+      <h2>Interview Rapid Fire</h2>
+      <div class="grid-2">
+        <div class="card highlight">
+          <ul>
+            <li><strong>Q: Why use IndexedDB over LocalStorage?</strong><br>A: LocalStorage is limited to 5MB and blocks the main UI thread. IndexedDB is asynchronous and handles hundreds of megabytes of structured JSON data without freezing the screen.</li>
+            <li><strong>Q: How do you handle sync conflicts?</strong><br>A: We use Last-Write-Wins (LWW). The client includes an <span class="code-text">updatedAt</span> timestamp. The server drops incoming sync payloads if its current database record is newer.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <ul>
+            <li><strong>Q: What is the benefit of Spring Boot Virtual Threads?</strong><br>A: We enable them via <span class="code-text">spring.threads.virtual.enabled=true</span> in Java 21. They let the backend handle thousands of concurrent synchronization requests using lightweight threads instead of blocking database connection pools.</li>
+            <li><strong>Q: How does the client verify true internet?</strong><br>A: It checks browser status first, then sends active HTTP GET calls to a Google test page and the backend <span class="code-text">/healthz</span> endpoint to verify true server reachability.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <span>AASHA Technical Interview Cheat Sheet</span>
+      <span>August 2026</span>
+    </footer>
+  </div>
+
+</body>
+</html>

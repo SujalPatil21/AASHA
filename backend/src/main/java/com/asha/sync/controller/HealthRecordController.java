@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping(path = {"", "/api"})
+@RequestMapping(path = { "", "/api" })
 public class HealthRecordController {
 
     private final HealthRecordService healthRecordService;
@@ -30,30 +30,25 @@ public class HealthRecordController {
         return new HealthRecordResponse(
                 request.getId(),
                 message,
-                true
-        );
+                true);
     }
 
     @GetMapping("/records")
     public Map<String, Object> getRecords(
-            @RequestParam(defaultValue = "200") int limit
-    ) {
+            @RequestParam(defaultValue = "200") int limit) {
         List<HealthRecord> records = healthRecordService.getAll(Math.max(1, Math.min(limit, 1000)));
         return Map.of(
                 "records", records.stream().map(this::toApiRecord).toList(),
-                "count", records.size()
-        );
+                "count", records.size());
     }
 
     @GetMapping("/high-risk")
     public Map<String, Object> getHighRiskRecords(
-            @RequestParam(defaultValue = "200") int limit
-    ) {
+            @RequestParam(defaultValue = "200") int limit) {
         List<HealthRecord> records = healthRecordService.getHighRisk(Math.max(1, Math.min(limit, 1000)));
         return Map.of(
                 "records", records.stream().map(this::toApiRecord).toList(),
-                "count", records.size()
-        );
+                "count", records.size());
     }
 
     @PostMapping("/sync")
@@ -74,8 +69,7 @@ public class HealthRecordController {
         return Map.of(
                 "synced", saved,
                 "duplicates", duplicates,
-                "message", "Records synced successfully"
-        );
+                "message", "Records synced successfully");
     }
 
     @GetMapping("/healthz")
@@ -89,8 +83,7 @@ public class HealthRecordController {
         return Map.of(
                 "id", id,
                 "deleted", deleted,
-                "message", deleted ? "Record deleted successfully" : "Record not found"
-        );
+                "message", deleted ? "Record deleted successfully" : "Record not found");
     }
 
     private Map<String, Object> toApiRecord(HealthRecord record) {
