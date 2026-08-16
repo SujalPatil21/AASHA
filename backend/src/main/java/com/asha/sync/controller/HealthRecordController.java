@@ -72,10 +72,6 @@ public class HealthRecordController {
                 "message", "Records synced successfully");
     }
 
-    @GetMapping("/healthz")
-    public Map<String, String> healthCheck() {
-        return Map.of("status", "ok");
-    }
 
     @DeleteMapping("/records/{id}")
     public Map<String, Object> deleteRecord(@PathVariable String id) {
