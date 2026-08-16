@@ -1,27 +1,277 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700&family=Inter:wght@400;500;600&display=swap');
+
+/* ===================================================
+   AASHA DESIGN SYSTEM — v2.0
+   Community Healthcare Field Application
+   =================================================== */
+
 :root {
-  font-family: "Segoe UI", Arial, sans-serif;
-  line-height: 1.5;
+  /* ── Core Brand ── */
+  --c-primary:      #087F73;
+  --c-primary-alt:  #0B9A8F;
+  --c-primary-dark: #065E56;
+
+  /* ── Text ── */
+  --c-dark:   #123B3A;
+  --c-body:   #4F6B69;
+  --c-muted:  #7A9E9B;
+
+  /* ── Surfaces ── */
+  --c-bg:          #F4F8F5;
+  --c-surface:     #FFFFFF;
+  --c-mint:        #E7F5F1;
+  --c-mint-light:  #F1F8F5;
+
+  /* ── Border ── */
+  --c-border: #D5E5E0;
+
+  /* ── Semantic ── */
+  --c-success: #168A57;
+  --c-warning: #D98A00;
+  --c-danger:  #D64545;
+  --c-offline: #B45309;
+
+  /* ── Shadows ── */
+  --shadow-sm:  0 2px 8px rgba(18, 59, 58, 0.06);
+  --shadow-md:  0 4px 16px rgba(18, 59, 58, 0.09);
+  --shadow-lg:  0 8px 30px rgba(18, 59, 58, 0.10);
+  --shadow-primary: 0 4px 20px rgba(8, 127, 115, 0.18);
+
+  /* ── Radii ── */
+  --r-sm:   8px;
+  --r-md:   12px;
+  --r-lg:   16px;
+  --r-xl:   20px;
+  --r-pill: 999px;
+
+  /* ── Transition ── */
+  --t-fast:   0.15s ease;
+  --t-normal: 0.25s ease;
+  --t-slow:   0.4s ease;
+
+  font-family: "Inter", system-ui, sans-serif;
+  line-height: 1.55;
   font-weight: 400;
-  color: #111827;
-  background-color: #f3f7f5;
+  color: var(--c-dark);
+  background-color: var(--c-bg);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-* {
-  box-sizing: border-box;
-}
+/* ── Reset ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  margin: 0;
-  min-width: 320px;
   min-height: 100vh;
-  background-color: #f3f7f5;
-  color: #111827;
+  background-color: var(--c-bg);
+  color: var(--c-dark);
+  min-width: 320px;
 }
 
-#root {
-  min-height: 100vh;
+#root { min-height: 100vh; }
+
+/* ── Typography ── */
+h1, h2, h3, h4, h5, h6 {
+  font-family: "Plus Jakarta Sans", "Inter", sans-serif;
+  color: var(--c-dark);
+  line-height: 1.25;
+}
+h1 { font-size: clamp(24px, 4vw, 36px); font-weight: 700; }
+h2 { font-size: clamp(18px, 3vw, 24px); font-weight: 600; }
+h3 { font-size: clamp(15px, 2.5vw, 20px); font-weight: 600; }
+h4 { font-size: 16px; font-weight: 600; }
+p  { color: var(--c-body); }
+
+a { color: var(--c-primary); text-decoration: none; }
+
+/* ── Focus ── */
+:focus-visible {
+  outline: 2px solid var(--c-primary);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+input:focus, select:focus, textarea:focus { outline: none; }
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--c-mint-light); }
+::-webkit-scrollbar-thumb { background: var(--c-border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--c-muted); }
+
+/* ── Keyframes ── */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@keyframes pulse-ring {
+  0%   { transform: scale(1);   opacity: 0.7; }
+  100% { transform: scale(2.4); opacity: 0; }
+}
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to   { background-position: 200% 0; }
+}
+@keyframes float-y {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-12px); }
+}
+@keyframes wave-bar {
+  0%, 100% { transform: scaleY(0.4); }
+  50%       { transform: scaleY(1); }
+}
+@keyframes blob-a {
+  0%, 100% { transform: translate(0, 0)   scale(1); }
+  33%       { transform: translate(20px, -12px) scale(1.08); }
+  66%       { transform: translate(-8px, 10px)  scale(0.95); }
+}
+@keyframes blob-b {
+  0%, 100% { transform: translate(0, 0)    scale(1); }
+  33%       { transform: translate(-18px, 8px)  scale(1.05); }
+  66%       { transform: translate(12px, -15px) scale(1.08); }
+}
+@keyframes blob-c {
+  0%, 100% { opacity: 0.10; transform: scale(1); }
+  50%       { opacity: 0.18; transform: scale(1.12); }
+}
+@keyframes draw-line {
+  from { stroke-dashoffset: 1000; }
+  to   { stroke-dashoffset: 0; }
+}
+@keyframes slide-up-in {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Utility Classes ── */
+.aasha-spin { animation: spin 1.5s linear infinite; }
+.aasha-float { animation: float-y 5s ease-in-out infinite; }
+.aasha-blob-a { animation: blob-a 8s ease-in-out infinite; }
+.aasha-blob-b { animation: blob-b 10s ease-in-out infinite; }
+.aasha-blob-c { animation: blob-c 7s ease-in-out infinite; }
+
+/* ── Skeleton ── */
+.skeleton {
+  background: linear-gradient(90deg, var(--c-mint) 25%, var(--c-mint-light) 50%, var(--c-mint) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: var(--r-md);
+}
+
+/* ── Input Shared Styles ── */
+.aasha-input {
+  width: 100%;
+  background: var(--c-surface);
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--r-sm);
+  padding: 13px 14px;
+  font-family: "Inter", sans-serif;
+  font-size: 15px;
+  color: var(--c-dark);
+  transition: border-color var(--t-fast), box-shadow var(--t-fast);
+  appearance: none;
+}
+.aasha-input:focus {
+  border-color: var(--c-primary);
+  box-shadow: 0 0 0 3px rgba(8, 127, 115, 0.12);
+}
+.aasha-input::placeholder { color: var(--c-muted); }
+
+/* ── Button Shared ── */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--c-primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--r-sm);
+  padding: 13px 24px;
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--t-fast), transform var(--t-fast), box-shadow var(--t-fast);
+}
+.btn-primary:hover {
+  background: var(--c-primary-dark);
+  box-shadow: var(--shadow-primary);
+  transform: translateY(-2px);
+}
+.btn-primary:active { transform: scale(0.97); }
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: transparent;
+  color: var(--c-primary);
+  border: 1.5px solid var(--c-primary);
+  border-radius: var(--r-sm);
+  padding: 12px 24px;
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--t-fast), transform var(--t-fast);
+}
+.btn-ghost:hover {
+  background: var(--c-mint);
+  transform: translateY(-2px);
+}
+.btn-ghost:active { transform: scale(0.97); }
+
+/* ── Card ── */
+.card {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+/* ── Badge / Pill ── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: var(--r-pill);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: "Inter", sans-serif;
+}
+.badge-success { background: #DCFCE7; color: #166534; }
+.badge-warning { background: #FEF9C3; color: #854D0E; }
+.badge-danger  { background: #FEE2E2; color: #991B1B; }
+.badge-info    { background: var(--c-mint); color: var(--c-primary-dark); }
+.badge-offline { background: #FEF3C7; color: #92400E; }
+
+/* ── Section Header ── */
+.section-label {
+  font-family: "Inter", sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--c-muted);
+}
+
+/* ── Divider ── */
+.divider {
+  border: none;
+  border-top: 1px solid var(--c-border);
+  margin: 0;
+}
+
+/* ── Reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .aasha-float, .aasha-blob-a, .aasha-blob-b, .aasha-blob-c,
+  .aasha-spin, .skeleton { animation: none !important; }
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+  }
 }
