@@ -81,6 +81,7 @@ function AshaPage() {
   const [saveOfflineStatus, setSaveOfflineStatus] = useState('idle'); // idle, saving, saved
 
   const recognitionRef = useRef(null);
+  const baseTextRef = useRef("");
 
   const refreshRecords = useCallback(async () => {
     const data = await patientRepository.searchPatients(searchQuery);
@@ -196,87 +197,76 @@ function AshaPage() {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         stream.getTracks().forEach((track) => track.stop());
       } catch {
-        setMicError("Microphone permission denied or unavailable.");
+        setMicError("Microphone permission denied.");
         return;
       }
 
-      const mountRecognition = (preferLocal) => {
-        const recognition = new Recognition();
-        recognition.lang = toSpeechLocale(language, rawText);
-        recognition.continuous = true;
-        recognition.interimResults = true;
-        if ("processLocally" in recognition) {
-          recognition.processLocally = preferLocal;
-        }
+      baseTextRef.current = rawText; // Capture base text when session starts
 
-        recognition.onresult = (event) => {
-          let finalChunk = "";
-          let interimChunk = "";
+      const recognition = new Recognition();
+      recognition.lang = toSpeechLocale(language, rawText);
+      recognition.continuous = true;
+      recognition.interimResults = true;
 
-          for (let i = event.resultIndex; i < event.results.length; i += 1) {
-            const transcript = event.results[i][0]?.transcript || "";
-            if (event.results[i].isFinal) {
-              finalChunk += `${transcript.trim()} `;
-            } else {
-              interimChunk += `${transcript.trim()} `;
-            }
-          }
+      let sessionFinalText = "";
 
-          const transcriptChunk = (finalChunk || interimChunk).trim();
-          if (!transcriptChunk) return;
+      recognition.onresult = (event) => {
+        let interimChunk = "";
+        let newlyFinalized = "";
 
-          setRawText((prev) => {
-            const base = prev.trim();
-            return base ? `${base} ${transcriptChunk}`.slice(0, 500) : transcriptChunk.slice(0, 500);
-          });
-        };
-
-        recognition.onerror = (event) => {
-          const localModeAttempt = "processLocally" in recognition && recognition.processLocally === true;
-
-          if (localModeAttempt && (event.error === "language-not-supported" || event.error === "service-not-allowed")) {
-            setMicMode("Online fallback");
-            setMicError("Offline speech pack unavailable. Switched to online recognition.");
-            recognitionRef.current = null;
-            setIsListening(false);
-            mountRecognition(false);
-            return;
-          }
-
-          if (event.error === "not-allowed") {
-            setMicError("Microphone permission denied.");
-          } else if (event.error === "language-not-supported") {
-            setMicError("Speech pack for this language is not available on-device.");
+        for (let i = event.resultIndex; i < event.results.length; i += 1) {
+          const transcript = event.results[i][0]?.transcript || "";
+          if (event.results[i].isFinal) {
+            newlyFinalized += `${transcript.trim()} `;
           } else {
-            setMicError(`Speech recognition error: ${event.error}`);
+            interimChunk += `${transcript.trim()} `;
           }
-          stopListening();
-        };
-
-        recognition.onend = () => {
-          setIsListening(false);
-          recognitionRef.current = null;
-        };
-
-        try {
-          recognitionRef.current = recognition;
-          recognition.start();
-          setIsListening(true);
-          setMicMode(preferLocal ? "Offline-first" : "Online fallback");
-        } catch {
-          setMicError("Could not start speech recognition in this browser.");
-          stopListening();
         }
+
+        if (newlyFinalized) {
+          sessionFinalText += newlyFinalized;
+        }
+
+        const currentSessionText = (sessionFinalText + interimChunk).trim();
+        if (!currentSessionText) return;
+
+        const base = baseTextRef.current.trim();
+        setRawText(base ? `${base} ${currentSessionText}`.slice(0, 500) : currentSessionText.slice(0, 500));
       };
 
-      mountRecognition(true);
+      recognition.onerror = (event) => {
+        if (event.error === "not-allowed") {
+          setMicError("Microphone permission denied.");
+        } else if (event.error === "network") {
+          setMicError("Online recognition unavailable.");
+        } else if (event.error === "language-not-supported") {
+          setMicError("Offline voice recognition unavailable.");
+        } else {
+          setMicError(`Speech recognition error: ${event.error}`);
+        }
+        stopListening();
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+        recognitionRef.current = null;
+      };
+
+      try {
+        recognitionRef.current = recognition;
+        recognition.start();
+        setIsListening(true);
+      } catch {
+        setMicError("Could not start speech recognition in this browser.");
+        stopListening();
+      }
     };
 
     start();
   }, [language, rawText, stopListening]);
 
   const handleMicToggle = useCallback(() => {
-    if (isListening) {
+    if (isListening || recognitionRef.current) {
       stopListening();
       return;
     }
