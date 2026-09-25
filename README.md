@@ -1,5 +1,5 @@
 # AASHA — Offline-First Health Data & Risk Flagging System
-![AASHA Dashboard](screenshots/Dashboard.png)
+![AASHA Dashboard](screenshots/dashboard.png)
 
 Digitizing rural healthcare workflows without requiring internet connectivity.
 
